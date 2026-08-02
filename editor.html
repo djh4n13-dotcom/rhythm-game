@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>채보 에디터 — 리듬게임</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-d:  #5b9cf6;
+      --color-f:  #a78bfa;
+      --color-j:  #f472b6;
+      --color-k:  #fb923c;
+      --color-df: #7dd3fc;
+      --color-jk: #f9a8d4;
+      --bg: #0f0f1a;
+      --panel: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.1);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── 레이아웃 ── */
+    #app {
+      display: grid;
+      grid-template-rows: 56px 1fr 180px;
+      grid-template-columns: 1fr 320px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    /* ── 상단 툴바 ── */
+    #toolbar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      background: rgba(0,0,0,0.4);
+      border-bottom: 1px solid var(--border);
+    }
+
+    #toolbar h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #a78bfa;
+      margin-right: 8px;
+    }
+
+    .tb-btn {
+      padding: 7px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .tb-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .tb-btn:active { transform: translateY(0); }
+    .tb-btn.primary { background: #6366f1; color: #fff; }
+    .tb-btn.red     { background: #ef4444; color: #fff; }
+    .tb-btn.green   { background: #22c55e; color: #fff; }
+    .tb-btn.gray    { background: rgba(255,255,255,0.1); color: #94a3b8; border: 1px solid var(--border); }
+    .tb-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    #rec-indicator {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ef4444;
+      display: none;
+      animation: blink 0.8s ease-in-out infinite alternate;
+    }
+    #rec-indicator.on { display: block; }
+    @keyframes blink { from { opacity: 1; } to { opacity: 0.2; } }
+
+    #time-display {
+      font-size: 16px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: #fde68a;
+      margin-left: auto;
+      margin-right: 8px;
+    }
+
+    #note-count {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* ── 타임라인 (메인) ── */
+    #timeline-area {
+      grid-column: 1;
+      position: relative;
+      overflow: hidden;
+      background: #0a0a14;
+    }
+
+    #timeline-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── 오른쪽 패널 ── */
+    #side-panel {
+      grid-column: 2;
+      grid-row: 2 / 4;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow-y: auto;
+    }
+
+    .side-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .side-title {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #64748b;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    /* BPM / Offset 입력 */
+    .cfg-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .cfg-row label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+    .cfg-row input[type="number"] {
+      width: 90px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 5px 10px;
+      text-align: right;
+      outline: none;
+    }
+    .cfg-row input[type="number"]:focus { border-color: #a78bfa; }
+
+    /* 키 가이드 */
+    .key-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .key-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+    }
+    .key-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .key-item span { font-size: 12px; color: #94a3b8; }
+    .key-item .key-label { font-weight: 700; color: #e2e8f0; font-size: 14px; }
+
+    /* 노트 목록 */
+    #note-list-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+    #note-list {
+      list-style: none;
+    }
+    .note-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .note-item:hover { background: rgba(255,255,255,0.06); }
+    .note-item.selected { background: rgba(167,139,250,0.15); }
+    .note-dot {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .note-time {
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      color: #64748b;
+      width: 60px;
+    }
+    .note-type {
+      font-size: 13px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .note-del {
+      font-size: 11px;
+      color: #ef4444;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239,68,68,0.3);
+      background: none;
+      transition: background 0.1s;
+    }
+    .note-del:hover { background: rgba(239,68,68,0.15); }
+
+    /* ── 하단 키패드 ── */
+    #keypad {
+      grid-column: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.3);
+      border-top: 1px solid var(--border);
+    }
+
+    #keypad-hint {
+      font-size: 11px;
+      color: #475569;
+      text-align: center;
+    }
+
+    #key-buttons-editor {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .ekey {
+      width: 100px;
+      height: 64px;
+      border-radius: 10px;
+      border: 2px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.05s, background 0.05s;
+      user-select: none;
+    }
+    .ekey:active, .ekey.pressed {
+      transform: scaleY(0.88);
+    }
+
+    #ekey-d  { border-color: var(--color-d);  color: var(--color-d);  background: rgba(91,156,246,0.08); }
+    #ekey-f  { border-color: var(--color-f);  color: var(--color-f);  background: rgba(167,139,250,0.08); }
+    #ekey-j  { border-color: var(--color-j);  color: var(--color-j);  background: rgba(244,114,182,0.08); }
+    #ekey-k  { border-color: var(--color-k);  color: var(--color-k);  background: rgba(251,146,60,0.08);  }
+
+    #ekey-d.pressed  { background: rgba(91,156,246,0.4);  }
+    #ekey-f.pressed  { background: rgba(167,139,250,0.4); }
+    #ekey-j.pressed  { background: rgba(244,114,182,0.4); }
+    #ekey-k.pressed  { background: rgba(251,146,60,0.4);  }
+
+    /* 저장 모달 */
+    #modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      backdrop-filter: blur(6px);
+    }
+    #modal-overlay.show { display: flex; }
+    #modal-box {
+      background: #1e1b4b;
+      border: 1px solid #a78bfa44;
+      border-radius: 20px;
+      padding: 32px 36px;
+      width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #modal-box h2 { font-size: 18px; font-weight: 800; color: #e2e8f0; }
+    #modal-box p  { font-size: 13px; color: #64748b; line-height: 1.6; }
+    #modal-code {
+      background: #0a0a14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      color: #86efac;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre;
+      line-height: 1.5;
+    }
+    #modal-btns { display: flex; gap: 10px; }
+
+    /* YouTube 숨김 */
+    #yt-wrap { position: fixed; top: -9999px; left: -9999px; width: 1px; height: 1px; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 툴바 -->
+  <div id="toolbar">
+    <h1>CHART EDITOR</h1>
+    <button class="tb-btn gray" id="btn-back">← 돌아가기</button>
+    <button class="tb-btn primary" id="btn-play-pause">▶ 재생</button>
+    <button class="tb-btn red"  id="btn-rec" disabled>⏺ 녹화 시작</button>
+    <button class="tb-btn gray" id="btn-stop">■ 정지</button>
+    <div id="rec-indicator"></div>
+    <select id="ed-song-select" style="
+      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:8px;
+      color:#e2e8f0;
+      padding:6px 10px;
+      font-size:13px;
+      cursor:pointer;
+      outline:none;
+      max-width:220px;
+    "></select>
+    <button class="tb-btn gray" id="btn-undo" disabled>↩ 되돌리기</button>
+    <button class="tb-btn gray" id="btn-clear">🗑 전체삭제</button>
+    <button class="tb-btn green" id="btn-save">💾 저장 &amp; 게임에 적용</button>
+    <span id="time-display">0:00.000</span>
+    <span id="note-count">노트 0개</span>
+  </div>
+
+  <!-- 타임라인 -->
+  <div id="timeline-area">
+    <canvas id="timeline-canvas"></canvas>
+  </div>
+
+  <!-- 하단 키패드 -->
+  <div id="keypad">
+    <div id="keypad-hint">
+      녹화 중 D · F · J · K 키 (또는 클릭) → 노트 기록 &nbsp;|&nbsp; D+F 동시 = DF 노트 &nbsp;|&nbsp; J+K 동시 = JK 노트
+    </div>
+    <div id="key-buttons-editor">
+      <div class="ekey" id="ekey-d" data-key="d">D</div>
+      <div class="ekey" id="ekey-f" data-key="f">F</div>
+      <div class="ekey" id="ekey-j" data-key="j">J</div>
+      <div class="ekey" id="ekey-k" data-key="k">K</div>
+    </div>
+  </div>
+
+  <!-- 오른쪽 패널 -->
+  <div id="side-panel">
+    <div class="side-section">
+      <div class="side-title">⚙ BPM / OFFSET</div>
+      <div class="cfg-row">
+        <label>BPM</label>
+        <input type="number" id="ed-bpm" value="190" min="40" max="300" step="1" />
+      </div>
+      <div class="cfg-row">
+        <label>시작 오프셋 (ms)</label>
+        <input type="number" id="ed-offset" value="7600" min="-5000" max="30000" step="50" />
+      </div>
+      <div class="cfg-row">
+        <label>박자</label>
+        <input type="number" id="ed-beats" value="3" min="2" max="8" step="1" />
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-title">🎹 키 가이드</div>
+      <div class="key-grid">
+        <div class="key-item">
+          <div class="key-dot" style="background:#5b9cf6"></div>
+          <span class="key-label">D</span>
+        </div>
+        <div class="key-item">
+          <div class="key-dot" style="background:#a78bfa"></div>
+          <span class="key-label">F</span>
+        </div>
+        <div class="key-item">
+          <div class="key-dot" style="background:#f472b6"></div>
+          <span class="key-label">J</span>
+        </div>
+        <div class="key-item">
+          <div class="key-dot" style="background:#fb923c"></div>
+          <span class="key-label">K</span>
+        </div>
+        <div class="key-item">
+          <div class="key-dot" style="background:#7dd3fc"></div>
+          <span class="key-label">D+F</span>
+        </div>
+        <div class="key-item">
+          <div class="key-dot" style="background:#f9a8d4"></div>
+          <span class="key-label">J+K</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-section" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+      <div class="side-title">📋 노트 목록 (<span id="list-count">0</span>개)</div>
+      <div id="note-list-wrap">
+        <ul id="note-list"></ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 저장 모달 -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h2>💾 채보 저장</h2>
+    <p>아래 코드가 <b>chart.js</b>에 자동으로 저장됩니다.<br>게임 화면으로 돌아가면 바로 적용돼요.</p>
+    <div id="modal-code"></div>
+    <div id="modal-btns">
+      <button class="tb-btn green" id="modal-confirm">✓ 저장하고 게임으로</button>
+      <button class="tb-btn gray"  id="modal-cancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- YouTube -->
+<div id="yt-wrap"><div id="yt-player"></div></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="songs.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

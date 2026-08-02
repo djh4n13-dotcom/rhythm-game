@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>리듬게임</title>
+  <link rel="icon" type="image/jpeg" href="icon.jpg" />
+  <link rel="apple-touch-icon" href="icon.jpg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════════ 곡 선택 화면 ══════════════ -->
+  <div id="screen-select" class="screen">
+    <div class="select-layout">
+
+      <!-- 왼쪽: 타이틀 -->
+      <div class="select-left">
+        <h1 class="game-title">RHYTHM<br>GAME</h1>
+        <p class="select-sub">곡을 선택하세요</p>
+        <div class="key-guide" style="margin-top:8px;">
+          <div class="key-row">
+            <span class="key-badge d">D</span>
+            <span class="key-badge f">F</span>
+            <span class="key-badge j">J</span>
+            <span class="key-badge k">K</span>
+          </div>
+          <p class="key-desc">D+F 동시 &nbsp;|&nbsp; J+K 동시</p>
+        </div>
+
+        <!-- 선택된 곡 정보 -->
+        <div id="selected-info">
+          <div id="selected-thumb-wrap">
+            <img id="selected-thumb" src="" alt="" />
+          </div>
+          <div id="selected-meta">
+            <p id="selected-title">—</p>
+            <p id="selected-artist">—</p>
+            <div id="selected-tags"></div>
+          </div>
+        </div>
+
+        <button id="btn-select-confirm" class="btn-main" disabled>▶ 선택</button>
+        <button class="btn-main secondary" onclick="location.href='editor.html'">✏️ 채보 만들기</button>
+      </div>
+
+      <!-- 오른쪽: 곡 목록 -->
+      <div class="select-right">
+        <div class="select-search-wrap">
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button id="btn-select-back" class="btn-main secondary" style="padding:8px 18px;font-size:13px;flex-shrink:0;">← 뒤로</button>
+            <input type="text" id="song-search" placeholder="🔍 곡 검색..." class="song-search-input" />
+          </div>
+        </div>
+        <div id="song-list"></div>
+
+        <!-- 커스텀 URL 입력 -->
+        <div id="custom-input-wrap" class="hidden">
+          <p class="custom-label">YouTube URL 또는 Video ID 입력</p>
+          <input type="text" id="custom-url" placeholder="https://youtu.be/... 또는 Video ID" />
+          <div class="custom-cfg-row">
+            <label>BPM <input type="number" id="custom-bpm" value="120" min="40" max="300" /></label>
+            <label>박자 <input type="number" id="custom-beats" value="4" min="2" max="8" /></label>
+            <label>오프셋(ms) <input type="number" id="custom-offset" value="1000" min="-3000" max="30000" step="50" /></label>
+          </div>
+          <button id="btn-custom-add" class="btn-main" style="width:100%;margin-top:8px;">추가</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ 시작 화면 ══════════════ -->
+  <div id="screen-start" class="screen active">
+    <div class="start-layout">
+
+      <!-- 왼쪽: 타이틀 -->
+      <div class="start-left">
+        <h1 class="game-title">RHYTHM<br>GAME</h1>
+        <p class="song-info">♪ Now Loading...</p>
+        <div class="key-guide">
+          <div class="key-row">
+            <span class="key-badge d">D</span>
+            <span class="key-badge f">F</span>
+            <span class="key-badge j">J</span>
+            <span class="key-badge k">K</span>
+          </div>
+          <p class="key-desc">D+F 동시 &nbsp;|&nbsp; J+K 동시</p>
+        </div>
+        <button id="btn-start" class="btn-main" disabled>잠시만요...</button>
+        <button id="btn-editor" class="btn-main secondary" onclick="location.href='editor.html'">✏️ 채보 만들기</button>
+        <div id="chart-status"></div>
+      </div>
+
+      <!-- 오른쪽: 설정 패널 -->
+      <div class="settings-panel" id="settings-panel">
+        <h2 class="panel-title">⚙ 게임 설정</h2>
+
+        <div class="setting-group">
+          <label class="setting-label">BPM <span class="setting-hint">— 곡 속도 (현재: 3/4박자 왈츠)</span></label>
+          <div class="setting-row">
+            <input type="range" id="cfg-bpm" min="60" max="240" step="1" value="190" />
+            <input type="number" id="cfg-bpm-num" min="60" max="240" step="1" value="190" />
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">시작 오프셋 <span class="setting-hint">ms — 첫 비트 위치</span></label>
+          <div class="setting-row">
+            <input type="range" id="cfg-offset" min="-3000" max="15000" step="50" value="7600" />
+            <input type="number" id="cfg-offset-num" min="-3000" max="15000" step="50" value="7600" />
+          </div>
+          <p class="setting-tip">노트가 박자보다 <b>빨리</b> 나오면 ↑ &nbsp;|&nbsp; <b>늦게</b> 나오면 ↓</p>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">노트 속도 <span class="setting-hint">px/s</span></label>
+          <div class="setting-row">
+            <input type="range" id="cfg-speed" min="100" max="900" step="10" value="320" />
+            <input type="number" id="cfg-speed-num" min="100" max="900" step="10" value="320" />
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">판정선 위치 <span class="setting-hint">px (위에서부터)</span></label>
+          <div class="setting-row">
+            <input type="range" id="cfg-judgment" min="300" max="560" step="5" value="490" />
+            <input type="number" id="cfg-judgment-num" min="300" max="560" step="5" value="490" />
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">PERFECT 범위 <span class="setting-hint">± ms</span></label>
+          <div class="setting-row">
+            <input type="range" id="cfg-perfect" min="20" max="200" step="5" value="60" />
+            <input type="number" id="cfg-perfect-num" min="20" max="200" step="5" value="60" />
+          </div>
+        </div>
+
+        <div class="setting-preview" id="preview-text">
+          BPM 190 · 3/4박자 · OFFSET 1350ms · SPEED 320 · JY 490 · PERFECT ±60ms
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 게임 화면 ══════════════ -->
+  <div id="screen-game" class="screen">
+
+    <div id="yt-container"><div id="yt-player"></div></div>
+
+    <!-- HUD -->
+    <div id="hud">
+      <div id="hud-score">
+        <span class="label">SCORE</span>
+        <span id="score-value">0</span>
+      </div>
+      <div id="hud-combo">
+        <span id="combo-value">0</span>
+        <span class="label">COMBO</span>
+      </div>
+      <div id="hud-accuracy">
+        <span class="label">ACC</span>
+        <span id="accuracy-value">100.00%</span>
+      </div>
+      <div id="hud-btns">
+        <button id="hud-btn-pause" class="hud-btn">⏸</button>
+        <button id="hud-btn-menu"  class="hud-btn">⌂</button>
+      </div>
+    </div>
+
+    <!-- 게임 레이아웃 -->
+    <div id="game-layout">
+
+      <!-- 노트 필드 -->
+      <div id="note-field">
+        <div class="lane" id="lane-d"><div class="lane-label">D</div></div>
+        <div class="lane" id="lane-f"><div class="lane-label">F</div></div>
+        <div class="lane" id="lane-j"><div class="lane-label">J</div></div>
+        <div class="lane" id="lane-k"><div class="lane-label">K</div></div>
+        <div class="lane-wide" id="lane-df"></div>
+        <div class="lane-wide" id="lane-jk"></div>
+        <div id="judgment-line"></div>
+        <div id="key-buttons">
+          <div class="key-btn" id="keybtn-d">D</div>
+          <div class="key-btn" id="keybtn-f">F</div>
+          <div class="key-btn" id="keybtn-j">J</div>
+          <div class="key-btn" id="keybtn-k">K</div>
+        </div>
+      </div>
+
+      <!-- 인게임 설정 패널 (항상 표시) -->
+      <div id="ingame-panel">
+        <p class="panel-title small">⚙ 실시간 조정</p>
+        <p class="ig-note">일시정지 중에도 수정 가능</p>
+
+        <div class="ig-group">
+          <label>오프셋 &nbsp;<span class="ig-val" id="ig-offset-val">1350</span> ms</label>
+          <input type="range" id="ig-offset" min="-3000" max="15000" step="50" value="7600" />
+          <div class="ig-btns">
+            <button class="ig-btn" data-target="ig-offset" data-delta="-100">−100</button>
+            <button class="ig-btn" data-target="ig-offset" data-delta="-50">−50</button>
+            <button class="ig-btn" data-target="ig-offset" data-delta="50">+50</button>
+            <button class="ig-btn" data-target="ig-offset" data-delta="100">+100</button>
+          </div>
+        </div>
+
+        <div class="ig-group">
+          <label>BPM &nbsp;<span class="ig-val" id="ig-bpm-val">190</span></label>
+          <input type="range" id="ig-bpm" min="60" max="240" step="1" value="190" />
+          <div class="ig-btns">
+            <button class="ig-btn" data-target="ig-bpm" data-delta="-5">−5</button>
+            <button class="ig-btn" data-target="ig-bpm" data-delta="-1">−1</button>
+            <button class="ig-btn" data-target="ig-bpm" data-delta="1">+1</button>
+            <button class="ig-btn" data-target="ig-bpm" data-delta="5">+5</button>
+          </div>
+        </div>
+
+        <div class="ig-group">
+          <label>노트 속도 &nbsp;<span class="ig-val" id="ig-speed-val">320</span></label>
+          <input type="range" id="ig-speed" min="100" max="900" step="10" value="320" />
+          <div class="ig-btns">
+            <button class="ig-btn" data-target="ig-speed" data-delta="-30">−30</button>
+            <button class="ig-btn" data-target="ig-speed" data-delta="30">+30</button>
+          </div>
+        </div>
+
+        <div class="ig-group">
+          <label>판정선 &nbsp;<span class="ig-val" id="ig-jy-val">490</span> px</label>
+          <input type="range" id="ig-jy" min="300" max="560" step="5" value="490" />
+          <div class="ig-btns">
+            <button class="ig-btn" data-target="ig-jy" data-delta="-10">−10</button>
+            <button class="ig-btn" data-target="ig-jy" data-delta="10">+10</button>
+          </div>
+        </div>
+
+        <div class="ig-group">
+          <label>PERFECT &nbsp;<span class="ig-val" id="ig-perfect-val">60</span> ms</label>
+          <input type="range" id="ig-perfect" min="20" max="200" step="5" value="60" />
+          <div class="ig-btns">
+            <button class="ig-btn" data-target="ig-perfect" data-delta="-10">−10</button>
+            <button class="ig-btn" data-target="ig-perfect" data-delta="10">+10</button>
+          </div>
+        </div>
+
+        <button id="btn-apply-restart" class="btn-small">↺ 재시작 (설정 반영)</button>
+        <button id="btn-pause-ingame" class="btn-small secondary" id="btn-pause-ingame">⏸ 일시정지 (ESC)</button>
+      </div>
+    </div>
+
+    <!-- 판정 텍스트 -->
+    <div id="judgment-text"></div>
+
+    <!-- 퍼즈 오버레이 — 설정 패널은 뒤에 살아있음 -->
+    <div id="pause-overlay" class="hidden">
+      <div class="pause-box">
+        <h2>PAUSED</h2>
+        <p class="pause-hint">오른쪽 패널에서 설정 수정 후<br>재시작 or 재개</p>
+        <button id="btn-resume" class="btn-main">▶ 재개 (ESC)</button>
+        <button id="btn-restart" class="btn-main secondary">↺ 처음부터 (설정 반영)</button>
+        <button id="btn-to-menu" class="btn-main secondary">⌂ 메뉴로 (Q)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 결과 화면 ══════════════ -->
+  <div id="screen-result" class="screen">
+    <div class="result-content">
+      <h2 class="result-title">RESULT</h2>
+      <div class="result-grade" id="result-grade">S</div>
+      <div class="result-stats">
+        <div class="stat-row"><span class="stat-label">SCORE</span><span class="stat-value" id="res-score">0</span></div>
+        <div class="stat-row"><span class="stat-label">PERFECT</span><span class="stat-value perfect" id="res-perfect">0</span></div>
+        <div class="stat-row"><span class="stat-label">GOOD</span><span class="stat-value good" id="res-good">0</span></div>
+        <div class="stat-row"><span class="stat-label">BAD</span><span class="stat-value bad" id="res-bad">0</span></div>
+        <div class="stat-row"><span class="stat-label">MISS</span><span class="stat-value miss" id="res-miss">0</span></div>
+        <div class="stat-row"><span class="stat-label">MAX COMBO</span><span class="stat-value" id="res-combo">0</span></div>
+        <div class="stat-row"><span class="stat-label">ACCURACY</span><span class="stat-value" id="res-accuracy">0%</span></div>
+      </div>
+      <div class="result-btns">
+        <button id="btn-retry" class="btn-main">↺ 다시 하기</button>
+        <button id="btn-to-start" class="btn-main secondary">설정 화면</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="songs.js"></script>
+  <script src="chart.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
